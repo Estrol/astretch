@@ -140,7 +140,7 @@ impl<T: Sample> Default for Stretch<T> {
             block_process: BlockProcess::default(),
             silent_encounter: 0,
             silent_first: true,
-            freq_multiplier: T::zero(),
+            freq_multiplier: T::one(),
             freq_tonality_limit: T::from_f32(0.5).unwrap(),
             custom_freq_map: None,
             formant_compensation: false,
@@ -415,7 +415,15 @@ impl<T: Sample> Stretch<T> {
         (self.stft.block_samples() + self.stft.default_intervals()) as usize
     }
 
-    pub fn output_seek<I>(&mut self, input: &I, input_samples: usize)
+    pub fn output_seek<I>(&mut self, input: &I)
+    where
+        I: AsRef<[T]>,
+    {
+        let input_samples = input.as_ref().len() / self.channels as usize;
+        self.output_seek_ex(input, input_samples);
+    }
+
+    pub fn output_seek_ex<I>(&mut self, input: &I, input_samples: usize)
     where
         I: AsRef<[T]>,
     {
@@ -848,13 +856,14 @@ impl<T: Sample> Stretch<T> {
         &mut self,
         input: &I,
         output: &mut O,
-    ) where
+    ) -> bool 
+    where
         I: AsRef<[T]> + ?Sized,
         O: AsMut<[T]> + ?Sized,
     {
         let input_samples = input.as_ref().len() / self.channels as usize;
         let output_samples = output.as_mut().len() / self.channels as usize;
-        self.exact_ex(input, input_samples, output, output_samples);
+        self.exact_ex(input, input_samples, output, output_samples)
     }
 
     pub fn exact_ex<I, O>(
@@ -875,7 +884,7 @@ impl<T: Sample> Stretch<T> {
             return false;
         }
 
-        self.output_seek(&inputs, seek_length as usize);
+        self.output_seek_ex(&inputs, seek_length as usize);
 
         let output_index = output_samples - (T::from_i32(seek_length).unwrap() / ratio).to_usize().unwrap();
 
